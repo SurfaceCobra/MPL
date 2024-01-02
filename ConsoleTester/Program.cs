@@ -7,7 +7,7 @@ namespace ConsoleTester
 {
     internal class Program
     {
-        static string DIR = @"C:\Users\whitelava3203\Documents\MPL\ConsoleTester\MPLConverter\Source.txt";
+        static string DIR = @"C:\Users\류기암\Source\Repos\MPL\MPLConverter\Source.txt";
         static char EOFWord = (char)0xFF;
 
 
