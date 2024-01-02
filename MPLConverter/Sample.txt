@@ -1,0 +1,11 @@
+﻿		for(int i=0; i<3;i++)
+		{
+			
+		}
+
+		public static define for(Init expr1, )~Expr inside~
+		{
+			
+		}
+
+		csfunction void WriteLine(string s) = Console.WriteLine(s);

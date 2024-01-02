@@ -1,0 +1,14 @@
+﻿namespace MyNamespace
+{
+	public class MyClass =
+	{
+		pubic function int myFunc(int ummjunsik) = {mystuff; } ;
+		public instance int myInstance = dothisstuff;
+		instance int SupInstance;
+	}
+	public class MyClass =
+	{
+		instance int myInstance2;	
+		instance int omg;
+	}
+}

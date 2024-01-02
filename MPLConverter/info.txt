@@ -1,0 +1,108 @@
+
+
+
+
+int skips : 스킵한 횟수, 알수 없을때 스택에 쌓지 않고
+skips++ 이후 스킵
+list stack : 완성된 부품이 들어감
+예시 :
+x
+Console.WriteLine
+Console.WriteLine(str)
+그러므로 ReadExpr의 끝에는 stack 반환이 필요
+
+
+
+
+
+Read : 알수 없는거 읽을때
+Get : 뭘 읽는지 알고 있을때
+
+
+
+
+ReadExpr
+    skips == 0
+        isKeyword
+            isReturn
+                반환 ExprReturn <= GetObject
+            isNew
+                반환 ExprNew <= GetFunction
+
+        isBlock
+            throw new Exception();
+
+
+        isDot
+            skips++
+            #Selector로 읽기
+
+        isValue
+            skips++
+            readExpr
+
+        is=
+            obj1 = from skip
+            obj2 = GetObject
+            반환 ExprEqual <= obj1 obj2
+
+        isEOL
+            스택을 블럭으로 반환
+            비었다면 빈 블럭 반환
+            반환된 블럭은 받은 쪽에서 처리
+        isLiteral
+            리터럴 읽기
+
+    skips == 1
+        isValue
+            skips=0
+            ReadExpr -1
+            obj1 = from skip
+            obj2 = GetSingleSelector
+            반환 FuncInit <= obj1 obj2
+        isBlock
+            obj1 = from skip
+            obj2 = 블록열어서 GetObject;
+            반환 ExprFunc <= obj1 obj2
+        isEOL
+            throw new Exception();
+
+    skips >= 2
+        throw new Exception();
+
+
+GetObject
+
+
+
+
+GetSelector
+예상과 같을경우 계속 읽기
+예상과 다를경우 그전까지 합쳐서 리턴, movebackword
+
+
+
+
+
+
+
+
+
+
+int i = 13;
+Console.WriteLine("Hello World!");
+
+
+
+
+
+int i = 13;
+
+
+ReadExpr : int
+isValue -> 스택에 int 저장 -> ReadExpr
+
+ReadExpr : i
+isValue ->
+
+
