@@ -14,6 +14,7 @@ namespace MPLConverter
         internal const string NameSpace = "namespace";
         internal const string Public = "public";
         internal const string Private = "private";
+        internal const string Protected = "protected";
         internal const string Dynamic = "dynamic";
         internal const string Global = "global";
         internal const string Static = "static";

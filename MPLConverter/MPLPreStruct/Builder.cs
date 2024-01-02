@@ -37,7 +37,7 @@ namespace MPLConverter
                     case ScriptBlock.Value str:
                         switch (state, str.value.o)
                         {
-                            case (StateBuild.None, "namespace"):
+                            case (StateBuild.None, KeyWord.NameSpace):
                                 state = StateBuild.NamespaceName;
                                 break;
 
@@ -97,24 +97,24 @@ namespace MPLConverter
                     case ScriptBlock.Value str:
                         switch (state, str.value.o)
                         {
-                            case (StateNamespace.GrabOptions, "class"):
+                            case (StateNamespace.GrabOptions, KeyWord.Class):
                                 state = StateNamespace.ClassName;
                                 isSecureStateChanged = false;
                                 break;
 
-                            case (StateNamespace.GrabOptions, "public"):
+                            case (StateNamespace.GrabOptions, KeyWord.Public):
                                 if (isSecureStateChanged) throw new Exception();
                                 secure = str.value.Convert(Secure.Public);
                                 isSecureStateChanged = true;
                                 break;
 
-                            case (StateNamespace.GrabOptions, "private"):
+                            case (StateNamespace.GrabOptions, KeyWord.Private):
                                 if (isSecureStateChanged) throw new Exception();
                                 secure = str.value.Convert(Secure.Private);
                                 isSecureStateChanged = true;
                                 break;
 
-                            case (StateNamespace.GrabOptions, "protected"):
+                            case (StateNamespace.GrabOptions, KeyWord.Protected):
                                 if (isSecureStateChanged) throw new Exception();
                                 secure = str.value.Convert(Secure.Protected);
                                 isSecureStateChanged = true;
@@ -215,8 +215,8 @@ namespace MPLConverter
             GrabOptionOrInitializeorEnd,
 
             GrabFuncInsertExpr,
-            GrabInstanceInitializeorEnd,
-            GrabInstanceInitializeExpr,
+            GrabInitializeorEnd,
+            GrabExpr,
             End,
 
         }
@@ -231,8 +231,7 @@ namespace MPLConverter
             StateField state = StateField.GrabSecureorNext;
             string name = null;
 
-            ScriptBlock.Block exprblock = new ScriptBlock.Block(ScriptBlock.Bracket.Shape.EOL);
-            Expr exprstartblock;
+
 
             foreach (var v in src)
             {
@@ -310,39 +309,47 @@ namespace MPLConverter
                                 state = StateField.GrabOptionOrInitializeorEnd;
                                 break;
 
-
-                            case (StateField.GrabOptionOrInitializeorEnd, _):
-
-                                break;
-
-
-                            case (StateField.GrabInstanceInitializeorEnd, _):
-
-                                if (str.value != "=")
+                            case (StateField.GrabOptionOrInitializeorEnd, _)://블럭이 아닌시점에서 Initializer로 확정됨
+                            case (StateField.GrabInitializeorEnd, _):
+                                if (str.value != KeyWord2.equal)
                                     throw new Exception();
-
-
-                                state = StateField.GrabInstanceInitializeExpr;
-
+                                state = StateField.GrabExpr;
                                 break;
 
 
-                            case (StateField.GrabInstanceInitializeExpr, _):
-                                exprblock.Add(new ScriptBlock.Value(str.value));
+                            case (StateField.GrabExpr, _):
+                                field.data = new ScriptBlock.Block(Bracket.Shape.EOL)
+                                {
+                                    new ScriptBlock.Value(str.value)
+                                };
+                                state = StateField.End;
                                 break;
 
+                            case (StateField.End, _):
+                                throw new Exception("end");
+
+                            default:
+                                throw new Exception("how");
                         }
                         break;
                     case ScriptBlock.Block block:
                         switch (state)
                         {
-                            case StateField.GrabInstanceInitializeExpr:
-                                exprblock.Add(block);
+
+                            case StateField.GrabOptionOrInitializeorEnd://블럭인 시점에서 Option으로 확정됨, 이후 추가 Option 가능성있음
+                                field.invoker.Add(block);
                                 break;
 
-                            case StateField.GrabFuncInsertExpr:
-                                exprstartblock = BuildExpr(block);
+                            case StateField.GrabExpr:
+                                field.data = block;
+                                state = StateField.End;
                                 break;
+
+                            case StateField.End:
+                                throw new Exception("end");
+
+                            default:
+                                throw new Exception("no");
                         }
                         break;
                     default:
@@ -352,22 +359,16 @@ namespace MPLConverter
 
             }
 
-            if(state == StateField.GrabInstanceInitializeorEnd)
+
+            switch(state)
             {
-                return new(name, new(field,src.range));
+                case StateField.GrabOptionOrInitializeorEnd:
+                case StateField.GrabInitializeorEnd:
+                case StateField.End:
+                    return new(name, new(field, src.range));
+                default:
+                    throw new Exception("not end go back");
             }
-            if(state == StateField.GrabInstanceInitializeExpr)
-            {
-                field.data = BuildExpr(exprblock);
-                return new(name, new(field, src.range));
-            }
-            if(state == StateField.GrabFuncInsertExpr) // true면 사실 안되는 코드
-            {
-                field.data = BuildExpr(exprblock);
-                return new(name, new(field, src.range));
-            }
-            throw new Exception();
-            return (new Ranged<string>("imshi",0..0),new Ranged<Field>(field,0..0));
         }
 
 
