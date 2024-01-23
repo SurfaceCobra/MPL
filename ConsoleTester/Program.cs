@@ -13,7 +13,8 @@ namespace ConsoleTester
 
         static void Main(string[] args)
         {
-            BlockBuildTest();
+            //BlockBuildTest();
+            MatchTest();
         }
 
 
@@ -87,6 +88,15 @@ namespace ConsoleTester
             ints.FindAllIndex(i => i == 0).AllWriteLine();
 
             ints.Split(x => x == 0).ForEach((x)=> { x.AllWrite();Console.WriteLine(); });
+        }
+
+        static void MatchTest()
+        {
+            string str1 = "qwerasdf";
+            string str2 = "asdfwwww";
+
+            str1.Match(str2, 5).WriteLine();
+            str1.MatchFromBehind(str2, 8, 4).WriteLine();
         }
     }
 }

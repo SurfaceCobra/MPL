@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Markup;
+using static MPLLib.ScriptBlock;
 
 namespace MPLLib
 {
@@ -15,6 +17,9 @@ namespace MPLLib
         {
             public static void WriteLine(this string str) => Console.WriteLine(str);
             public static void Write(this string str) => Console.Write(str);
+
+            public static void WriteLine(this object obj) => Console.WriteLine(obj.ToString());
+            public static void Write(this object obj) => Console.Write(obj.ToString());
 
             public static IEnumerable<T> ForEach<T>(this IEnumerable<T> values, Action<T> action)
             {
@@ -59,6 +64,32 @@ namespace MPLLib
                     yield return list.Skip(skipcount).Take(takecount).ToList();
                 }
             }
+
+            public static bool Match<T>(this IEnumerable<T> origin, IEnumerable<T> target, int matchlength)
+            {
+                IEnumerator<T> val1 = origin.GetEnumerator();
+                IEnumerator<T> val2 = target.GetEnumerator();
+                for(int i=0;i<matchlength;i++)
+                {
+                    
+                    bool state = !val1.MoveNext();
+                    state |= !val2.MoveNext();
+                    state |= !Object.Equals(val1.Current, val2.Current);
+
+                    if (state) return false;
+                }
+                return true;
+            }
+
+            public static bool MatchFromBehind<T>(this List<T> origin, List<T> target) => MatchFromBehind(origin, target, origin.Count, target.Count);
+            public static bool MatchFromBehind<T>(this List<T> origin, IEnumerable<T> target, int matchlength) => MatchFromBehind(origin, target, origin.Count, matchlength);
+            public static bool MatchFromBehind<T>(this IEnumerable<T> origin, IEnumerable<T> target, int originlength, int matchlength)
+            {
+                return origin.Skip(originlength - matchlength).Take(matchlength).Match(target, matchlength);
+            }
+
+
+
         }
 
         public static class MM
