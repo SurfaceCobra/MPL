@@ -140,33 +140,33 @@ namespace MPLLib
                 {
                     IsOk = true;
                 }
-                if(IsOk)
+                if (IsOk)
                 {
                     //일반 텍스트
                     block.values.Add(new ScriptBlock.Value(str));
                 }
 
-                
+
             }
             throw new Exception("File End");
         }
-        
+
         private static ScriptBlock.Block Fix(ScriptBlock.Block srcblock)
         {
             List<int> slist = new List<int>();
-            for(int i=0;i<srcblock.values.Count;i++)
+            for (int i = 0; i < srcblock.values.Count; i++)
             {
                 if (srcblock.values[i] is ScriptBlock.Block block)
                 {
                     srcblock.values[i] = Fix(block);
                 }
 
-                
+
             }
             if (srcblock.values.Any(IsSemicolon))
             {
                 var splitedinside = srcblock.values.Split(IsSemicolon).ToList();
-                if(splitedinside.Last().Count == 0)
+                if (splitedinside.Last().Count == 0)
                 {
                     splitedinside.RemoveAt(splitedinside.Count - 1);
                 }
@@ -184,135 +184,136 @@ namespace MPLLib
 
             bool IsSemicolon(ScriptBlock b) => b is ScriptBlock.Value imshi && imshi.value == ";";
         }
-        public static class Bracket
+
+    }
+    public static class Bracket
+    {
+        public enum Shape
         {
-            public enum Shape
+            Null,
+            None,
+            NoGap,
+            Small,
+            Medium,
+            Big,
+            Comparer,
+            String,
+            Char,
+            EOL,
+            EOF
+        }
+
+        public enum Location
+        {
+            Null,
+            None,
+            Open,
+            Close,
+            CloseOnly,
+            Both,
+
+        }
+
+        public static Dictionary<char, (Shape, Location)> Groups = new()
+        {
+            ['('] = (Shape.Small, Location.Open),
+            [')'] = (Shape.Small, Location.Close),
+            ['{'] = (Shape.Medium, Location.Open),
+            ['}'] = (Shape.Medium, Location.Close),
+            ['['] = (Shape.Big, Location.Open),
+            [']'] = (Shape.Big, Location.Close),
+            ['<'] = (Shape.Comparer, Location.Open),
+            ['>'] = (Shape.Comparer, Location.Close),
+            [';'] = (Shape.EOL, Location.CloseOnly),
+            ['"'] = (Shape.String, Location.Both),
+            ['\''] = (Shape.Char, Location.Both),
+            ['~'] = (Shape.NoGap, Location.Both),
+            [(char)0x00] = (Shape.EOF, Location.CloseOnly),
+        };
+        public static string StringOf((Shape, Location) val)
+        {
+            switch (val.Item1)
             {
-                Null,
-                None,
-                Small,
-                Medium,
-                Big,
-                Comparer,
-                String,
-                Char,
-                EOL,
-                EOF
-            }
+                case Shape.Small:
+                    switch (val.Item2)
+                    {
+                        case Location.Open:
+                            return "(";
+                        case Location.Close:
+                            return ")";
+                        default:
+                            throw new Exception();
+                    }
 
-            public enum Location
-            {
-                Null,
-                None,
-                Open,
-                Close,
-                CloseOnly,
-                Both,
+                case Shape.Medium:
+                    switch (val.Item2)
+                    {
+                        case Location.Open:
+                            return "{";
+                        case Location.Close:
+                            return "}";
+                        default:
+                            throw new Exception();
+                    }
 
-            }
+                case Shape.Big:
+                    switch (val.Item2)
+                    {
+                        case Location.Open:
+                            return "[";
+                        case Location.Close:
+                            return "]";
+                        default:
+                            throw new Exception();
+                    }
 
-            public static Dictionary<char, (Shape, Location)> Groups = new()
-            {
-                ['('] = (Shape.Small, Location.Open),
-                [')'] = (Shape.Small, Location.Close),
-                ['{'] = (Shape.Medium, Location.Open),
-                ['}'] = (Shape.Medium, Location.Close),
-                ['['] = (Shape.Big, Location.Open),
-                [']'] = (Shape.Big, Location.Close),
-                ['<'] = (Shape.Comparer, Location.Open),
-                ['>'] = (Shape.Comparer, Location.Close),
-                [';'] = (Shape.EOL, Location.CloseOnly),
-                ['"'] = (Shape.String, Location.Both),
-                ['\''] = (Shape.Char, Location.Both),
-                [(char)0x00] = (Shape.EOF, Location.CloseOnly),
-            };
-            public static string StringOf((Shape, Location) val)
-            {
-                switch (val.Item1)
-                {
-                    case Shape.Small:
-                        switch (val.Item2)
-                        {
-                            case Location.Open:
-                                return "(";
-                            case Location.Close:
-                                return ")";
-                            default:
-                                throw new Exception();
-                        }
+                case Shape.Comparer:
+                    switch (val.Item2)
+                    {
+                        case Location.Open:
+                            return "<";
+                        case Location.Close:
+                            return ">";
+                        default:
+                            throw new Exception();
+                    }
 
-                    case Shape.Medium:
-                        switch (val.Item2)
-                        {
-                            case Location.Open:
-                                return "{";
-                            case Location.Close:
-                                return "}";
-                            default:
-                                throw new Exception();
-                        }
+                case Shape.EOL:
+                    switch (val.Item2)
+                    {
+                        case Location.Open:
+                            return "";
+                        case Location.Close:
+                            return "#CLS#";
+                        case Location.CloseOnly:
+                            return "#EOL#";
+                        default:
+                            throw new Exception();
+                    }
 
-                    case Shape.Big:
-                        switch (val.Item2)
-                        {
-                            case Location.Open:
-                                return "[";
-                            case Location.Close:
-                                return "]";
-                            default:
-                                throw new Exception();
-                        }
+                case Shape.String:
+                    return "\"";
 
-                    case Shape.Comparer:
-                        switch (val.Item2)
-                        {
-                            case Location.Open:
-                                return "<";
-                            case Location.Close:
-                                return ">";
-                            default:
-                                throw new Exception();
-                        }
+                case Shape.Char:
+                    return "\'";
 
-                    case Shape.EOL:
-                        switch (val.Item2)
-                        {
-                            case Location.Open:
-                                return "";
-                            case Location.Close:
-                                return "#CLS#";
-                            case Location.CloseOnly:
-                                return "#EOL#";
-                            default:
-                                throw new Exception();
-                        }
+                case Shape.EOF:
+                    switch (val.Item2)
+                    {
+                        case Location.Open:
+                            return "";
+                        case Location.Close:
+                        case Location.CloseOnly:
+                            return "#EOF#";
+                        default:
+                            throw new Exception();
+                    }
 
-                    case Shape.String:
-                        return "\"";
-
-                    case Shape.Char:
-                        return "\'";
-
-                    case Shape.EOF:
-                        switch (val.Item2)
-                        {
-                            case Location.Open:
-                                return "";
-                            case Location.Close:
-                            case Location.CloseOnly:
-                                return "#EOF#";
-                            default:
-                                throw new Exception();
-                        }
-
-                    default:
-                        return "#NULL#";
-                }
+                default:
+                    return "#NULL#";
             }
         }
     }
-
-
 
 
 }

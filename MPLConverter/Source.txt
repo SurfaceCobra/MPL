@@ -2,7 +2,7 @@
 {
 	public class MyClass =
 	{
-		pubic function int myFunc(int ummjunsik) = {mystuff; } ;
+		public function int myFunc = {um jun sick; } ;
 		public instance int myInstance = dothisstuff;
 		instance int SupInstance;
 	}

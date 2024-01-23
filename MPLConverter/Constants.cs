@@ -14,6 +14,7 @@ namespace MPLConverter
         internal const string NameSpace = "namespace";
         internal const string Public = "public";
         internal const string Private = "private";
+        internal const string Protected = "protected";
         internal const string Dynamic = "dynamic";
         internal const string Global = "global";
         internal const string Static = "static";
@@ -33,6 +34,7 @@ namespace MPLConverter
 
     public enum Secure
     {
+        Auto,
         Public,
         Private,
         Protected
@@ -41,6 +43,7 @@ namespace MPLConverter
     {
         Null,
         None,
+        Auto,
         Dynamic, //저장위치:객체, 접근위치:객체 - instance 사용
         Global, //저장위치:타입, 접근위치:객체 - function등 사용, 접근할때 접근한 객체를 전달하니까
         Static, //저장위치:타입, 접근위치:타입 - 스태틱

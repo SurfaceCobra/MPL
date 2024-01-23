@@ -46,7 +46,8 @@ namespace MPL
             public Ranged<Location> location;
             public Ranged<HolderType> type;
             public Ranged<string> objType;
-            public Expr data;
+            public List<ScriptBlock> invoker;
+            public ScriptBlock.Block data;
 
             
 
