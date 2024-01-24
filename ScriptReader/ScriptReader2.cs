@@ -3,6 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace MPLLib
 {
     public class ScriptReader2 : IEnumerable<Ranged<string>>
     {
-        private IEnumerator<char> _data { get; set; }
+        private ICachedEnumerator<char> _data { get; set; }
         private ScriptReader2()
         {
 
@@ -24,7 +25,7 @@ namespace MPLLib
         public ScriptReader2(IEnumerator<char> data, IEnumerable<KeyValuePair<string, CustomReader>> ImportantWordsCustom, IEnumerable<string> UsedWordsCustom, IEnumerable<string> IgnoreWordsCustom)
         {
             int maxlength = 1;
-            this._data = data;
+            
 
             ImportantWordsBase.ForEach((v) => maxlength = Math.Max(maxlength, v.Key.Length));
             ImportantWordsCustom.ForEach((v) => maxlength = Math.Max(maxlength, v.Key.Length));
@@ -32,96 +33,132 @@ namespace MPLLib
             UsedWordsCustom.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
             IgnoreWordsBase.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
             IgnoreWordsCustom.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
-            MaxLength = maxlength;
+            this._data = new CachedEnumerator<char>(data,maxlength);
 
-            ImportantWords = new Dictionary<string, CustomReader>[MaxLength];
-            UsedWords = new List<string>[MaxLength];
-            IgnoreWords = new List<string>[MaxLength];
 
-            ImportantWordsBase.Concat(ImportantWordsCustom).ForEach((v) => ImportantWords[v.Key.Length].Add(v.Key, v.Value));
-            UsedWordsBase.Concat(UsedWordsCustom).ForEach((v) => UsedWords[v.Length].Add(v));
-            IgnoreWordsBase.Concat(IgnoreWordsCustom).ForEach((v) => IgnoreWords[v.Length].Add(v));
+            ImportantWords = new Dictionary<string, CustomReader>[maxlength];
+            UsedWords = new List<string>[maxlength];
+            IgnoreWords = new List<string>[maxlength];
+
+            for(int i=0;i<maxlength;i++)
+            {
+                ImportantWords[i] = new Dictionary<string, CustomReader>();
+                UsedWords[i] = new List<string>();
+                IgnoreWords[i] = new List<string>();
+            }
+
+            ImportantWordsBase.Concat(ImportantWordsCustom).ForEach((v) => ImportantWords[v.Key.Length-1].Add(v.Key, v.Value));
+            UsedWordsBase.Concat(UsedWordsCustom).ForEach((v) => UsedWords[v.Length-1].Add(v));
+            IgnoreWordsBase.Concat(IgnoreWordsCustom).ForEach((v) => IgnoreWords[v.Length-1].Add(v));
+
+            
 
 
         }
 
 
 
-        private IEnumerator<Ranged<string>> Reader(IEnumerator<char> data)
+        private IEnumerator<Ranged<string>> Reader(ICachedEnumerator<char> data)
         {
-            int checkdelay = 0;
             List<char> Q = new List<char>();
-            for(int index = 0; data.MoveNext(); index++)
+            int index;
+            for(index=0;data.MoveNext();index++)
             {
-                
+                WordStatus status = TryFindWord(data.CachedValues, out string word, out CustomReader reader);
+
+                switch (status)
+                {
+                    case WordStatus.ImportantWord:
+                    case WordStatus.UsedWord:
+                    case WordStatus.IgnoreWord:
+                        if (Q.Count > 0)
+                        {
+                            yield return new Ranged<string>(new string(Q.ToArray()), (index - Q.Count)..index);
+                            Q.Clear();
+                        }
+                        break;
+                }
+                switch (status)
+                {
+                    case WordStatus.ImportantWord:
+
+                        break;
+                    case WordStatus.UsedWord:
+                        yield return new Ranged<string>(word, (index-word.Length)..index);
+                        index += word.Length;
+                        MM.Repeat(word.Length, data.MoveNext);
+                        data.CachedValues.RemoveRange(0, word.Length-1);
+                        break;
+                    case WordStatus.None:
+                        Q.Add(data.Current);
+                        break;
+                }
+
+
+
+
             }
-            throw new NotImplementedException();
+            if (Q.Count > 0)
+            {
+                yield return new Ranged<string>(new string(Q.ToArray()), (index - Q.Count)..index);
+                Q.Clear();
+            }
+
+            yield break;
         }
 
-        public delegate IEnumerator<Ranged<string>> CustomReader(IEnumerator<char> data);
+        public delegate IEnumerator<Ranged<string>> CustomReader(ICachedEnumerator<char> data);
 
 
 
-        private CompareFlag CompareUsedWords(List<char> chars, out string foundword, out bool check)
+        enum WordStatus
         {
-            foundword = "";
-            bool isFound = false;
-            bool isCheck = false;
-            for (int i = 1; i < MaxLength + 1; i++) // word 길이별 반복문
-            {
-                foreach (var str in ImportantWords[i].Keys.Concat(UsedWords[i]).Concat(IgnoreWords[i]))
-                {
-                    for (int j = i; j > 0; j--) // word 하위 매칭용, i==j일때 true면 Found, i!=j일때 true면 Check, j는 매칭할 길이
-                    {
-                        if (chars.MatchFromBehind(str, j))
-                        {
-                            if (i == j)
-                            {
-                                isFound = true;
-                                foundword = str;
-                            }
-                            else
-                            {
-                                isCheck = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            bool InlineFunction(IEnumerable<string> umjunsick, int step, out string str2)
-            {
-                foreach (var str in umjunsick)
-                {
-                    for (int j =step; j > 0; j--) // word 하위 매칭용, i==j일때 true면 Found, i!=j일때 true면 Check, j는 매칭할 길이
-                    {
-                        if (chars.MatchFromBehind(str, j))
-                        {
-                            if (step == j)
-                            {
-                                str2 = str;
-                                return true;
-                            }
-                            else
-                            {
-                                isCheck = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-
-        }
-        private enum CompareFlag
-        {
-            NotFound,
+            None,
             ImportantWord,
             UsedWord,
-            IgnoreWord
+            IgnoreWord,
         }
+        private WordStatus TryFindWord(List<char> charlist, out string word, out CustomReader reader)
+        {
+            for (int i = charlist.Count; i > 0;)
+            {
+                var theVars = ImportantWords[--i].Where(x => charlist.Match(x.Key, x.Key.Length));
+                switch (theVars.Count())
+                {
+                    case > 1:
+                        throw new Exception("Custom ImportantWord Syntax Error");
+                    case 1:
+                        word = theVars.First().Key;
+                        reader = theVars.First().Value;
+                        return WordStatus.ImportantWord;
+                }
+            }
+            for (int i = charlist.Count; i > 0;)
+            {
+                string? theString = UsedWords[--i].Find(x => charlist.Match(x, x.Length));
+                if (theString != null)
+                {
+                    word = theString;
+                    reader = null;
+                    return WordStatus.UsedWord;
+                }
+            }
+            for (int i = charlist.Count; i > 0;)
+            {
+                string? theString = IgnoreWords[--i].Find(x => charlist.Match(x, x.Length));
+                if (theString != null)
+                {
+                    word = theString;
+                    reader = null;
+                    return WordStatus.IgnoreWord;
+                }
+            }//same code Ctrl C V not good code?
 
-        private int MaxLength { get; init; }
+
+            word = "";
+            reader = null;
+            return WordStatus.None;
+        }
 
         public Dictionary<string, CustomReader>[] ImportantWords { get; init; }
         public List<string>[] UsedWords { get; init; }
@@ -137,6 +174,10 @@ namespace MPLLib
             ImportantWordsBase = new Dictionary<string, CustomReader>()
             {
                 ["\"\"\""] = (data) =>
+                {
+                    return null;
+                },
+                ["안돼"] = (data) =>
                 {
                     return null;
                 },

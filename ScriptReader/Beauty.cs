@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,9 +13,9 @@ namespace MPLLib
     namespace Beauty
     {
 
-
         public static class ExtensionMethodIsHere
         {
+
             public static void WriteLine(this string str) => Console.WriteLine(str);
             public static void Write(this string str) => Console.Write(str);
 
@@ -27,15 +28,56 @@ namespace MPLLib
                 return values;
             }
 
+            public static IEnumerable<T> AllWriteThenLine<T>(this IEnumerable<T> values)
+            {
+                foreach (T item in values) Console.Write(item.ToString());
+                Console.WriteLine();
+                return values;
+            }
+            public static IEnumerable<T> AllWriteLine<T>(this IEnumerable<T> values, object afterwriter)
+            {
+                foreach (T item in values)
+                {
+                    Console.WriteLine(item.ToString());
+                    Console.WriteLine(afterwriter.ToString());
+                }
+                return values;
+            }
             public static IEnumerable<T> AllWriteLine<T>(this IEnumerable<T> values)
             {
                 foreach (T item in values) Console.WriteLine(item.ToString());
+                return values;
+            }
+            public static IEnumerable<T> AllWrite<T>(this IEnumerable<T> values, object afterwriter)
+            {
+                foreach (T item in values)
+                {
+                    Console.Write(item.ToString());
+                    Console.Write(afterwriter.ToString());
+                }
                 return values;
             }
             public static IEnumerable<T> AllWrite<T>(this IEnumerable<T> values)
             {
                 foreach (T item in values) Console.Write(item.ToString());
                 return values;
+            }
+
+
+            public static IEnumerable<T> WriteLine<T>(this IEnumerable<T> value)
+            {
+                Console.WriteLine();
+                return value;
+            }
+            public static IEnumerable<T> WriteLine<T>(this IEnumerable<T> value, object afterwriter)
+            {
+                Console.WriteLine(afterwriter.ToString());
+                return value;
+            }
+            public static IEnumerable<T> Write<T>(this IEnumerable<T> value, object afterwriter)
+            {
+                Console.Write(afterwriter.ToString());
+                return value;
             }
 
             public static int Length(this Range range) => range.End.Value - range.Start.Value;
@@ -52,6 +94,7 @@ namespace MPLLib
                 }
             }
 
+            public static IEnumerable<List<T>> Split<T>(this List<T> list, T match) => Split<T>(list, (x) => object.Equals(match, x));
             public static IEnumerable<List<T>> Split<T>(this List<T> list, Predicate<T> predicate)
             {
                 List<int> splitlist = list.FindAllIndex((x) => predicate(x)).ToList();
@@ -114,5 +157,19 @@ namespace MPLLib
             }
 
         }
+
+        public class Flag<T> where T:IEquatable<T>
+        {
+
+        }
+
+        public class DummyException : Exception
+        {
+            public DummyException()
+            {
+
+            }
+        }
+        
     }
 }

@@ -13,8 +13,13 @@ namespace ConsoleTester
 
         static void Main(string[] args)
         {
-            //BlockBuildTest();
-            MatchTest();
+            ScriptReader2Test();
+        }
+
+        static void ScriptReader2Test()
+        {
+            ScriptReader2 newReader = new ScriptReader2("여러분 @제가   !! 언제=>! 경1557제");
+            newReader.AllWriteLine("------------").WriteLine("@@END@@");
         }
 
 
@@ -87,7 +92,10 @@ namespace ConsoleTester
 
             ints.FindAllIndex(i => i == 0).AllWriteLine();
 
-            ints.Split(x => x == 0).ForEach((x)=> { x.AllWrite();Console.WriteLine(); });
+            ints.Split(x => x == 0).ForEach(x=> x.AllWriteThenLine());
+            Console.WriteLine();
+            ints.Split(0).ForEach(x=> x.AllWriteThenLine());
+
         }
 
         static void MatchTest()
@@ -97,6 +105,20 @@ namespace ConsoleTester
 
             str1.Match(str2, 5).WriteLine();
             str1.MatchFromBehind(str2, 8, 4).WriteLine();
+        }
+
+        static void CachedEnumeratorTest()
+        {
+            using ICachedEnumerator<char> cce = "     12345".GetCachedEnumerator(5);
+            while (cce.MoveNext())
+                cce.CachedValues.AllWriteThenLine();
+
+
+            "First Half Done!".WriteLine();
+
+            cce.Reset();
+            while(cce.MoveNext())
+                cce.Peek(10).AllWriteThenLine();
         }
     }
 }
