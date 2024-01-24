@@ -18,45 +18,23 @@ namespace MPLLib
         {
 
         }
-        public ScriptReader2(string str) : this(str.GetEnumerator(), Enumerable.Empty<KeyValuePair<string, CustomReader>>(), Enumerable.Empty<string>(), Enumerable.Empty<string>())
-        { }
-        public ScriptReader2(IEnumerable<char> data) : this(data.GetEnumerator(), Enumerable.Empty<KeyValuePair<string, CustomReader>>(), Enumerable.Empty<string>(), Enumerable.Empty<string>())
-        { }
-        public ScriptReader2(IEnumerator<char> data, IEnumerable<KeyValuePair<string, CustomReader>> ImportantWordsCustom, IEnumerable<string> UsedWordsCustom, IEnumerable<string> IgnoreWordsCustom)
+        public ScriptReader2(string str) : this(str.GetEnumerator()) { }
+        public ScriptReader2(IEnumerable<char> data) : this(data.GetEnumerator()) { }
+
+        public ScriptReader2(IEnumerator<char> data) : this(data, Enumerable.Empty<WordInfo>()) { }
+        public ScriptReader2(IEnumerator<char> data, IEnumerable<WordInfo> CustomInfo)
         {
-            int maxlength = 1;
             
+            var FullInFo = BaseInfoList.Concat(CustomInfo);
 
-            ImportantWordsBase.ForEach((v) => maxlength = Math.Max(maxlength, v.Key.Length));
-            ImportantWordsCustom.ForEach((v) => maxlength = Math.Max(maxlength, v.Key.Length));
-            UsedWordsBase.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
-            UsedWordsCustom.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
-            IgnoreWordsBase.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
-            IgnoreWordsCustom.ForEach((v) => maxlength = Math.Max(maxlength, v.Length));
-            this._data = new CachedEnumerator<char>(data,maxlength);
-
-
-            ImportantWords = new Dictionary<string, CustomReader>[maxlength];
-            UsedWords = new List<string>[maxlength];
-            IgnoreWords = new List<string>[maxlength];
-
+            int maxlength = FullInFo.Max((x) => x.word.Length);
+            this._data = new CachedEnumerator<char>(data, maxlength);
+            InfoList = new List<WordInfo>[maxlength];
             for(int i=0;i<maxlength;i++)
-            {
-                ImportantWords[i] = new Dictionary<string, CustomReader>();
-                UsedWords[i] = new List<string>();
-                IgnoreWords[i] = new List<string>();
-            }
-
-            ImportantWordsBase.Concat(ImportantWordsCustom).ForEach((v) => ImportantWords[v.Key.Length-1].Add(v.Key, v.Value));
-            UsedWordsBase.Concat(UsedWordsCustom).ForEach((v) => UsedWords[v.Length-1].Add(v));
-            IgnoreWordsBase.Concat(IgnoreWordsCustom).ForEach((v) => IgnoreWords[v.Length-1].Add(v));
-
+                InfoList[i] = new List<WordInfo>();
+            FullInFo.ForEach(x => InfoList[x.word.Length-1].Add(x));
             
-
-
         }
-
-
 
         private IEnumerator<Ranged<string>> Reader(ICachedEnumerator<char> data)
         {
@@ -64,9 +42,9 @@ namespace MPLLib
             int index;
             for(index=0;data.MoveNext();index++)
             {
-                WordStatus status = TryFindWord(data.CachedValues, out string word, out CustomReader reader);
+                WordInfo info = TryFindWord(data.CachedValues);
 
-                switch (status)
+                switch (info.status)
                 {
                     case WordStatus.ImportantWord:
                     case WordStatus.UsedWord:
@@ -78,32 +56,27 @@ namespace MPLLib
                         }
                         break;
                 }
-                switch (status)
+                switch (info.status)
                 {
                     case WordStatus.ImportantWord:
 
                         break;
                     case WordStatus.UsedWord:
-                        yield return new Ranged<string>(word, (index-word.Length)..index);
-                        index += word.Length;
-                        MM.Repeat(word.Length, data.MoveNext);
-                        data.CachedValues.RemoveRange(0, word.Length-1);
+                        yield return new Ranged<string>(info.word, (index-info.word.Length)..index);
+                        index += info.word.Length;
+                        MM.Repeat(info.word.Length, data.MoveNext);
+                        data.CachedValues.RemoveRange(0, info.word.Length-1);
                         break;
                     case WordStatus.None:
                         Q.Add(data.Current);
                         break;
                 }
-
-
-
-
             }
             if (Q.Count > 0)
             {
                 yield return new Ranged<string>(new string(Q.ToArray()), (index - Q.Count)..index);
                 Q.Clear();
             }
-
             yield break;
         }
 
@@ -111,53 +84,29 @@ namespace MPLLib
 
 
 
-        enum WordStatus
+        public enum WordStatus
         {
             None,
             ImportantWord,
             UsedWord,
             IgnoreWord,
         }
-        private WordStatus TryFindWord(List<char> charlist, out string word, out CustomReader reader)
+
+
+        private WordInfo TryFindWord(List<char> charlist)
         {
-            for (int i = charlist.Count; i > 0;)
+            for(int i=charlist.Count; i>0;)
             {
-                var theVars = ImportantWords[--i].Where(x => charlist.Match(x.Key, x.Key.Length));
-                switch (theVars.Count())
+                var theVars = InfoList[--i].Where(x => charlist.Match(x.word, x.word.Length));
+                switch(theVars.Count())
                 {
                     case > 1:
-                        throw new Exception("Custom ImportantWord Syntax Error");
+                        throw new Exception("Multiple Syntax Crash Boom Why");
                     case 1:
-                        word = theVars.First().Key;
-                        reader = theVars.First().Value;
-                        return WordStatus.ImportantWord;
+                        return theVars.First();
                 }
             }
-            for (int i = charlist.Count; i > 0;)
-            {
-                string? theString = UsedWords[--i].Find(x => charlist.Match(x, x.Length));
-                if (theString != null)
-                {
-                    word = theString;
-                    reader = null;
-                    return WordStatus.UsedWord;
-                }
-            }
-            for (int i = charlist.Count; i > 0;)
-            {
-                string? theString = IgnoreWords[--i].Find(x => charlist.Match(x, x.Length));
-                if (theString != null)
-                {
-                    word = theString;
-                    reader = null;
-                    return WordStatus.IgnoreWord;
-                }
-            }//same code Ctrl C V not good code?
-
-
-            word = "";
-            reader = null;
-            return WordStatus.None;
+            return (WordStatus.None, "", null);
         }
 
         public Dictionary<string, CustomReader>[] ImportantWords { get; init; }
@@ -165,42 +114,78 @@ namespace MPLLib
         public List<string>[] IgnoreWords { get; init; }
 
 
+        public static List<WordInfo>[] InfoList;
+
+        public static List<WordInfo> BaseInfoList;
+
         public static Dictionary<string, CustomReader> ImportantWordsBase;
         public static List<string> UsedWordsBase;
         public static List<string> IgnoreWordsBase;
 
         static ScriptReader2()
         {
-            ImportantWordsBase = new Dictionary<string, CustomReader>()
+            BaseInfoList = new List<WordInfo>()
             {
-                ["\"\"\""] = (data) =>
-                {
-                    return null;
-                },
-                ["안돼"] = (data) =>
-                {
-                    return null;
-                },
+                (WordStatus.UsedWord, "..", null),
+                (WordStatus.UsedWord, "=>", null),
+                (WordStatus.UsedWord, "->", null),
+                (WordStatus.UsedWord, "~", null),
+                (WordStatus.UsedWord, "`", null),
+                (WordStatus.UsedWord, "!", null),
+                (WordStatus.UsedWord, "@", null),
+                (WordStatus.UsedWord, "#", null),
+                (WordStatus.UsedWord, "$", null),
+                (WordStatus.UsedWord, "%", null),
+                (WordStatus.UsedWord, "^", null),
+                (WordStatus.UsedWord, "&", null),
+                (WordStatus.UsedWord, "*", null),
+                (WordStatus.UsedWord, "(", null),
+                (WordStatus.UsedWord, ")", null),
+                (WordStatus.UsedWord, "-", null),
+                (WordStatus.UsedWord, "_", null),
+                (WordStatus.UsedWord, "=", null),
+                (WordStatus.UsedWord, "+", null),
+                (WordStatus.UsedWord, "[", null),
+                (WordStatus.UsedWord, "{", null),
+                (WordStatus.UsedWord, "]", null),
+                (WordStatus.UsedWord, "}", null),
+                (WordStatus.UsedWord, "\\", null),
+                (WordStatus.UsedWord, "|", null),
+                (WordStatus.UsedWord, ";", null),
+                (WordStatus.UsedWord, ":", null),
+                (WordStatus.UsedWord, "'", null),
+                (WordStatus.UsedWord, "\"", null),
+                (WordStatus.UsedWord, ",", null),
+                (WordStatus.UsedWord, "<", null),
+                (WordStatus.UsedWord, ".", null),
+                (WordStatus.UsedWord, ">", null),
+                (WordStatus.UsedWord, "/", null),
+                (WordStatus.UsedWord, "?", null),
+                (WordStatus.IgnoreWord, " ", null),
+                (WordStatus.IgnoreWord, "\r", null),
+                (WordStatus.IgnoreWord, "\n", null),
+                (WordStatus.IgnoreWord, "\t", null),
+
             };
 
-
-            UsedWordsBase = new List<string>(new string[]{
-            "###", "...",
-            "##", "..", "=>", "->",
-            "\"", "#", ".", "~", "`", "!", "@", "$", "%", "^",
-            "&", "*", "(", ")", "-", "+", "=", "[", "]", "{",
-            "}", ":", ";", "\'", ",", "<", ".", ">", "?", "/",
-            "\\", "|",
-            });
-
-            IgnoreWordsBase = new List<string>(new string[]{
-            " ", "\r", "\n", "\t",
-            });
         }
 
         IEnumerator<Ranged<string>> IEnumerable<Ranged<string>>.GetEnumerator() => Reader(_data);
 
         IEnumerator IEnumerable.GetEnumerator() => Reader(_data);
 
+    }
+
+    public record struct WordInfo(ScriptReader2.WordStatus status, string word, ScriptReader2.CustomReader? reader)
+    {
+        public static implicit operator (ScriptReader2.WordStatus status, string word, ScriptReader2.CustomReader? reader)(WordInfo value)
+        {
+            return (value.status, value.word, value.reader);
+        }
+
+        public static implicit operator WordInfo((ScriptReader2.WordStatus status, string word, ScriptReader2.CustomReader? reader) value)
+        {
+            return new WordInfo(value.status, value.word, value.reader);
+        }
     }
 }
