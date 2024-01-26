@@ -36,13 +36,12 @@ namespace MPLLib
             
         }
 
-        private IEnumerator<Ranged<string>> Reader(ICachedEnumerator<char> data)
+        private IEnumerator<Ranged<string>> Reader(ReadPasser passer)
         {
             List<char> Q = new List<char>();
-            int index;
-            for(index=0;data.MoveNext();index++)
+            while(passer.MoveNext())
             {
-                WordInfo info = TryFindWord(data.CachedValues);
+                WordInfo info = TryFindWord(passer.data.CachedValues);
 
                 switch (info.status)
                 {
@@ -51,7 +50,7 @@ namespace MPLLib
                     case WordStatus.IgnoreWord:
                         if (Q.Count > 0)
                         {
-                            yield return new Ranged<string>(new string(Q.ToArray()), (index - Q.Count)..index);
+                            yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
                             Q.Clear();
                         }
                         break;
@@ -59,28 +58,32 @@ namespace MPLLib
                 switch (info.status)
                 {
                     case WordStatus.ImportantWord:
+                        foreach(var v in info.reader(passer))
+                        {
+                            if (v.o.Length > 0)
+                                yield return v;
+                        }
 
                         break;
                     case WordStatus.UsedWord:
-                        yield return new Ranged<string>(info.word, (index-info.word.Length)..index);
-                        index += info.word.Length;
-                        MM.Repeat(info.word.Length, data.MoveNext);
-                        data.CachedValues.RemoveRange(0, info.word.Length-1);
+                        yield return new Ranged<string>(info.word, (passer.index-info.word.Length)..passer.index);
+                        MM.Repeat(info.word.Length, passer.MoveNext);
+                        passer.data.CachedValues.RemoveRange(0, info.word.Length-1);
                         break;
                     case WordStatus.None:
-                        Q.Add(data.Current);
+                        Q.Add(passer.Current);
                         break;
                 }
             }
             if (Q.Count > 0)
             {
-                yield return new Ranged<string>(new string(Q.ToArray()), (index - Q.Count)..index);
+                yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
                 Q.Clear();
             }
             yield break;
         }
 
-        public delegate IEnumerator<Ranged<string>> CustomReader(ICachedEnumerator<char> data);
+        public delegate IEnumerable<Ranged<string>> CustomReader(ReadPasser passer);
 
 
 
@@ -109,75 +112,144 @@ namespace MPLLib
             return (WordStatus.None, "", null);
         }
 
-        public Dictionary<string, CustomReader>[] ImportantWords { get; init; }
-        public List<string>[] UsedWords { get; init; }
-        public List<string>[] IgnoreWords { get; init; }
-
-
-        public static List<WordInfo>[] InfoList;
+        public List<WordInfo>[] InfoList;
 
         public static List<WordInfo> BaseInfoList;
-
-        public static Dictionary<string, CustomReader> ImportantWordsBase;
-        public static List<string> UsedWordsBase;
-        public static List<string> IgnoreWordsBase;
 
         static ScriptReader2()
         {
             BaseInfoList = new List<WordInfo>()
             {
-                (WordStatus.UsedWord, "..", null),
-                (WordStatus.UsedWord, "=>", null),
-                (WordStatus.UsedWord, "->", null),
-                (WordStatus.UsedWord, "~", null),
-                (WordStatus.UsedWord, "`", null),
-                (WordStatus.UsedWord, "!", null),
-                (WordStatus.UsedWord, "@", null),
-                (WordStatus.UsedWord, "#", null),
-                (WordStatus.UsedWord, "$", null),
-                (WordStatus.UsedWord, "%", null),
-                (WordStatus.UsedWord, "^", null),
-                (WordStatus.UsedWord, "&", null),
-                (WordStatus.UsedWord, "*", null),
-                (WordStatus.UsedWord, "(", null),
-                (WordStatus.UsedWord, ")", null),
-                (WordStatus.UsedWord, "-", null),
-                (WordStatus.UsedWord, "_", null),
-                (WordStatus.UsedWord, "=", null),
-                (WordStatus.UsedWord, "+", null),
-                (WordStatus.UsedWord, "[", null),
-                (WordStatus.UsedWord, "{", null),
-                (WordStatus.UsedWord, "]", null),
-                (WordStatus.UsedWord, "}", null),
-                (WordStatus.UsedWord, "\\", null),
-                (WordStatus.UsedWord, "|", null),
-                (WordStatus.UsedWord, ";", null),
-                (WordStatus.UsedWord, ":", null),
-                (WordStatus.UsedWord, "'", null),
-                (WordStatus.UsedWord, "\"", null),
-                (WordStatus.UsedWord, ",", null),
-                (WordStatus.UsedWord, "<", null),
-                (WordStatus.UsedWord, ".", null),
-                (WordStatus.UsedWord, ">", null),
-                (WordStatus.UsedWord, "/", null),
-                (WordStatus.UsedWord, "?", null),
-                (WordStatus.IgnoreWord, " ", null),
-                (WordStatus.IgnoreWord, "\r", null),
-                (WordStatus.IgnoreWord, "\n", null),
-                (WordStatus.IgnoreWord, "\t", null),
+                (WordStatus.UsedWord, ".."),
+                (WordStatus.UsedWord, "=>"),
+                (WordStatus.UsedWord, "->"),
+                (WordStatus.UsedWord, "~"),
+                (WordStatus.UsedWord, "`"),
+                (WordStatus.UsedWord, "!"),
+                (WordStatus.UsedWord, "@"),
+                (WordStatus.UsedWord, "#"),
+                (WordStatus.UsedWord, "$"),
+                (WordStatus.UsedWord, "%"),
+                (WordStatus.UsedWord, "^"),
+                (WordStatus.UsedWord, "&"),
+                (WordStatus.UsedWord, "*"),
+                (WordStatus.UsedWord, "("),
+                (WordStatus.UsedWord, ")"),
+                (WordStatus.UsedWord, "-"),
+                (WordStatus.UsedWord, "_"),
+                (WordStatus.UsedWord, "="),
+                (WordStatus.UsedWord, "+"),
+                (WordStatus.UsedWord, "["),
+                (WordStatus.UsedWord, "{"),
+                (WordStatus.UsedWord, "]"),
+                (WordStatus.UsedWord, "}"),
+                (WordStatus.UsedWord, "\\"),
+                (WordStatus.UsedWord, "|"),
+                (WordStatus.UsedWord, ";"),
+                (WordStatus.UsedWord, ":"),
+                (WordStatus.UsedWord, "'"),
+                (WordStatus.UsedWord, ","),
+                (WordStatus.UsedWord, "<"),
+                (WordStatus.UsedWord, "."),
+                (WordStatus.UsedWord, ">"),
+                (WordStatus.UsedWord, "/"),
+                (WordStatus.UsedWord, "?"),
+                (WordStatus.IgnoreWord, " "),
+                (WordStatus.IgnoreWord, "\r"),
+                (WordStatus.IgnoreWord, "\n"),
+                (WordStatus.IgnoreWord, "\t"),
 
+                (WordStatus.ImportantWord, "\"", ReaderString),
+
+                (WordStatus.ImportantWord, "@\"", null),
+                (WordStatus.ImportantWord, "$\"", null),
+                (WordStatus.ImportantWord, "@$\"", null),
+                (WordStatus.ImportantWord, "$@\"", null),
+
+                (WordStatus.ImportantWord, "//", CreateReaderAnnotationUntil(Environment.NewLine)),
+                (WordStatus.ImportantWord, "/*", CreateReaderAnnotationUntil("*/")),
+                
             };
-
         }
 
-        IEnumerator<Ranged<string>> IEnumerable<Ranged<string>>.GetEnumerator() => Reader(_data);
+        IEnumerator<Ranged<string>> IEnumerable<Ranged<string>>.GetEnumerator() => Reader((_data,0));
 
-        IEnumerator IEnumerable.GetEnumerator() => Reader(_data);
+        IEnumerator IEnumerable.GetEnumerator() => Reader((_data,0));
 
+
+
+        private static CustomReader CreateReaderAnnotationUntil(string until)
+        {
+            return (x) => PartialReaderAnnotation(x, until);
+        }
+        private static CustomReader CreateReaderStringWithOptions(bool isAt, bool isFormat)
+        {
+            return (x) => PartialReaderString(x, isAt, isFormat);
+        }
+        
+        private static IEnumerable<Ranged<string>> ReaderString(ReadPasser passer)
+        {
+            List<char> Q = new List<char>();
+            Q.Add(passer.data.Current);
+            while (passer.MoveNext())
+            {
+                switch(passer.data.Current)
+                {
+                    case '"':
+                        Q.Add(passer.data.Current);
+                        yield return  new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
+                        yield break;
+                    case '\\':
+                        Q.Add(passer.data.Current);
+                        if (!passer.MoveNext())
+                            goto end;
+                        Q.Add(passer.data.Current);
+                        break;
+                    default:
+                        Q.Add(passer.data.Current);
+                        break;
+                }
+            }
+            end:
+            throw new Exception("Unfinished String");
+        }
+
+        
+        private static IEnumerable<Ranged<string>> PartialReaderAnnotation(ReadPasser passer, string ender)
+        {
+            List<char> Q = new List<char>();
+            Q.Add(passer.data.Current);
+            while (passer.MoveNext())
+            {
+                if (passer.data.CachedValues.Match(ender, ender.Length))
+                {
+                    ender.ForEach(Q.Add);
+                    yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
+                    yield break;
+                }
+                else
+                {
+                    Q.Add(passer.data.Current);
+                }
+            }
+        end:
+            throw new Exception("Unfinished Annotation");
+        }
+    
+        private static IEnumerable<Ranged<string>> PartialReaderString(ReadPasser passer, bool isAt, bool isFormat)
+        {
+            
+        }
     }
 
     public record struct WordInfo(ScriptReader2.WordStatus status, string word, ScriptReader2.CustomReader? reader)
     {
+        public static implicit operator WordInfo((ScriptReader2.WordStatus status, string word) value)
+        {
+            return new WordInfo(value.status, value.word, null);
+        }
+
+
         public static implicit operator (ScriptReader2.WordStatus status, string word, ScriptReader2.CustomReader? reader)(WordInfo value)
         {
             return (value.status, value.word, value.reader);
@@ -187,5 +259,46 @@ namespace MPLLib
         {
             return new WordInfo(value.status, value.word, value.reader);
         }
+    }
+
+    public record struct ReadPasser(ICachedEnumerator<char> data, int index) : IEnumerator<char>
+    {
+        public char Current => data.Current;
+
+        object IEnumerator.Current => data.Current;
+
+        public void Dispose()
+        {
+            data.Dispose();
+        }
+
+        public bool MoveNext()
+        {
+            bool b = data.MoveNext();
+            if (b) index++;
+            return b;
+        }
+
+        public void Reset()
+        {
+            data.Reset();
+            index = 0;
+        }
+
+        public static implicit operator (ICachedEnumerator<char> data, int index)(ReadPasser value)
+        {
+            return (value.data, value.index);
+        }
+
+        public static implicit operator ReadPasser((ICachedEnumerator<char> data, int index) value)
+        {
+            return new ReadPasser(value.data, value.index);
+        }
+    }
+
+
+    public class PartialReader
+    {
+
     }
 }

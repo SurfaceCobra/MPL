@@ -18,8 +18,15 @@ namespace ConsoleTester
 
         static void ScriptReader2Test()
         {
-            ScriptReader2 newReader = new ScriptReader2("여러분 @제가   !! 언제=>! 경1557제");
-            newReader.AllWriteLine("------------").WriteLine("@@END@@");
+            string str = """
+            ai go na!@n
+            mmam"\r\n\" \""a /*m
+            umjunsick//this w*/ord is fa"mou"s 
+            nnn aaa
+            """;
+            ScriptReader2 newReader = new ScriptReader2(str);
+            newReader.AllWriteLine("------------");
+
         }
 
 
