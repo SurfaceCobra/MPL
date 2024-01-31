@@ -159,7 +159,11 @@ namespace MPLLib
                 (WordStatus.IgnoreWord, "\n"),
                 (WordStatus.IgnoreWord, "\t"),
 
-                (WordStatus.ImportantWord, "\"", ReaderString),
+                (WordStatus.ImportantWord, "\"", CreateReaderStringWithOptions(false, false)),
+                (WordStatus.ImportantWord, "@\"", CreateReaderStringWithOptions(true, false)),
+                (WordStatus.ImportantWord, "$\"", CreateReaderStringWithOptions(false, true)),
+                (WordStatus.ImportantWord, "@$\"", CreateReaderStringWithOptions(true, true)),
+                (WordStatus.ImportantWord, "$@\"", CreateReaderStringWithOptions(true, true)),
 
                 (WordStatus.ImportantWord, "@\"", null),
                 (WordStatus.ImportantWord, "$\"", null),
@@ -186,33 +190,7 @@ namespace MPLLib
         {
             return (x) => PartialReaderString(x, isAt, isFormat);
         }
-        
-        private static IEnumerable<Ranged<string>> ReaderString(ReadPasser passer)
-        {
-            List<char> Q = new List<char>();
-            Q.Add(passer.data.Current);
-            while (passer.MoveNext())
-            {
-                switch(passer.data.Current)
-                {
-                    case '"':
-                        Q.Add(passer.data.Current);
-                        yield return  new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
-                        yield break;
-                    case '\\':
-                        Q.Add(passer.data.Current);
-                        if (!passer.MoveNext())
-                            goto end;
-                        Q.Add(passer.data.Current);
-                        break;
-                    default:
-                        Q.Add(passer.data.Current);
-                        break;
-                }
-            }
-            end:
-            throw new Exception("Unfinished String");
-        }
+
 
         
         private static IEnumerable<Ranged<string>> PartialReaderAnnotation(ReadPasser passer, string ender)
@@ -238,7 +216,31 @@ namespace MPLLib
     
         private static IEnumerable<Ranged<string>> PartialReaderString(ReadPasser passer, bool isAt, bool isFormat)
         {
-            
+            List<char> Q = new List<char>();
+            Q.Add(passer.data.Current);
+            while (passer.MoveNext())
+            {
+                switch (passer.data.Current, isAt, isFormat)
+                {
+                    case ('"', _, _):
+                        Q.Add(passer.data.Current);
+                        yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
+                        yield break;
+                    case ('\\', false, _):
+                        Q.Add(passer.data.Current);
+                        if (!passer.MoveNext())
+                            goto end;
+                        Q.Add(passer.data.Current);
+                        break;
+                    case (_, _, true):
+                        throw new NotImplementedException("not");
+                    default:
+                        Q.Add(passer.data.Current);
+                        break;
+                }
+            }
+        end:
+            throw new Exception("Unfinished String");
         }
     }
 
