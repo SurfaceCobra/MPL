@@ -24,7 +24,7 @@ namespace ConsoleTester
             umjunsick//this w*/ord is fa"mou"s 
             nnn aaa
             """;
-            ScriptReader2 newReader = new ScriptReader2(str);
+            ScriptReader newReader = new ScriptReader(str);
             newReader.AllWriteLine("------------");
 
         }
@@ -46,7 +46,7 @@ namespace ConsoleTester
         {
             string src = File.ReadAllText(DIR);
 
-            ScriptReader reader = new ScriptReader(src);
+            ScriptReaderOLD reader = new ScriptReaderOLD(src);
 
             foreach (string s in reader)
             {
@@ -58,7 +58,7 @@ namespace ConsoleTester
         {
             string src = File.ReadAllText(DIR);
 
-            ScriptReader reader = new ScriptReader(src);
+            ScriptReaderOLD reader = new ScriptReaderOLD(src);
 
             ScriptBlock.Block scriptBlock = ScriptBlock.Create(reader);
 
@@ -71,7 +71,7 @@ namespace ConsoleTester
         {
             string src = File.ReadAllText(DIR);
 
-            ScriptReader reader = new ScriptReader(src);
+            ScriptReaderOLD reader = new ScriptReaderOLD(src);
 
             //reader.AllWriteLine();
 

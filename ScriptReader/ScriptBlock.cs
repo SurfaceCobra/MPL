@@ -97,7 +97,7 @@ namespace MPLLib
             }
         }
 
-        public static ScriptBlock.Block Create(ScriptReader reader) => Fix(CreateUnFixed(Bracket.Shape.EOF, reader.Footer("\x00").GetEnumerator()));
+        public static ScriptBlock.Block Create(ScriptReaderOLD reader) => Fix(CreateUnFixed(Bracket.Shape.EOF, reader.Footer("\x00").GetEnumerator()));
         private static ScriptBlock.Block CreateUnFixed(Bracket.Shape opener, IEnumerator<Ranged<string>> reader)
         {
             ScriptBlock.Block block = new ScriptBlock.Block(opener);

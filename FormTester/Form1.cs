@@ -18,7 +18,7 @@ namespace FormTester
         private void button1_Click(object sender, EventArgs e)
         {
             string text = richTextBox1.Text;
-            ScriptReader reader = new ScriptReader(text);
+            ScriptReaderOLD reader = new ScriptReaderOLD(text);
             foreach(var v in reader)
             {
 

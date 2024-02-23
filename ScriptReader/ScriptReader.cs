@@ -1,263 +1,299 @@
-﻿using System;
+﻿using MPLLib.Beauty;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Channels;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MPLLib
 {
-
-
     public class ScriptReader : IEnumerable<Ranged<string>>
     {
-        char[] Src;
-        int index;
-
-        public ScriptReader(string src)
+        private ICachedEnumerator<char> _data { get; set; }
+        private ScriptReader()
         {
-            this.Src = src.ToCharArray();
-            index = 0;
+
+        }
+        public ScriptReader(string str) : this(str.GetEnumerator()) { }
+        public ScriptReader(IEnumerable<char> data) : this(data.GetEnumerator()) { }
+
+        public ScriptReader(IEnumerator<char> data) : this(data, Enumerable.Empty<WordInfo>()) { }
+        public ScriptReader(IEnumerator<char> data, IEnumerable<WordInfo> CustomInfo)
+        {
+            
+            var FullInFo = BaseInfoList.Concat(CustomInfo);
+
+            int maxlength = FullInFo.Max((x) => x.word.Length);
+            this._data = new CachedEnumerator<char>(data, maxlength);
+            InfoList = new List<WordInfo>[maxlength];
+            for(int i=0;i<maxlength;i++)
+                InfoList[i] = new List<WordInfo>();
+            FullInFo.ForEach(x => InfoList[x.word.Length-1].Add(x));
+            
         }
 
-        public ScriptReader(char[] src, int index)
+        private IEnumerator<Ranged<string>> Reader(ReadPasser passer)
         {
-            this.Src = src;
-            index = 0;
-        }
-
-        public bool TryReadNext(out Ranged<string> output)
-        {
-            output = null;
-
-
-            //index 는 시작지점, curr은 길이
-
-            int curr = 0;
-            int currIndex() => index + curr;
-            char currWord() => Src[currIndex()];
-
-            if (currIndex() >= Src.Length)
+            List<char> Q = new List<char>();
+            while(passer.MoveNext())
             {
-                return false;
+                WordInfo info = TryFindWord(passer.data.CachedValues);
+
+                switch (info.status)
+                {
+                    case WordStatus.ImportantWord:
+                    case WordStatus.UsedWord:
+                    case WordStatus.IgnoreWord:
+                        if (Q.Count > 0)
+                        {
+                            yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
+                            Q.Clear();
+                        }
+                        break;
+                }
+                switch (info.status)
+                {
+                    case WordStatus.ImportantWord:
+                        foreach(var v in info.reader(passer))
+                        {
+                            if (v.o.Length > 0)
+                                yield return v;
+                        }
+
+                        break;
+                    case WordStatus.UsedWord:
+                        yield return new Ranged<string>(info.word, (passer.index-info.word.Length)..passer.index);
+                        MM.Repeat(info.word.Length, passer.MoveNext);
+                        passer.data.CachedValues.RemoveRange(0, info.word.Length-1);
+                        break;
+                    case WordStatus.None:
+                        Q.Add(passer.Current);
+                        break;
+                }
             }
-
-            //초기 IgnoreWord 제거
-            while (true)
+            if (Q.Count > 0)
             {
-                if (currIndex() >= Src.Length)
-                {
-                    return false;
-                }
-                else if (IgnoreWords.Contains(currWord()))
-                {
-                    curr++;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            //시작이 UsedWords일경우 바로 반환
-            if (UsedWords.Contains(currWord()))
-            {
-                output = new Ranged<string>(currWord().ToString(), index..currIndex());
-                index += curr + 1;
-
-                return true;
-            }
-
-
-
-            int beginIndex = currIndex();
-
-
-            //시작이 "일경우 다음 "까지 쭉 달림
-            if (currWord() == '\"')
-            {
-                curr++;
-                while (currWord() != '\"')
-                {
-                    curr++;
-                }
-                curr++;
-
-                output = new Ranged<string>(new(Src[beginIndex..currIndex()]), index..currIndex());
-
-                index += curr;
-                return true;
-            }
-
-
-            curr++;
-
-
-
-
-            while (true)
-            {
-                if (currIndex() >= Src.Length)
-                {
-                    if (beginIndex == currIndex())
-                    {
-                        return false;
-                    }
-                    else
-                    {
-                        output = new Ranged<string>(new(Src[beginIndex..currIndex()]), index..currIndex());
-                        index += curr;
-                        return true;
-                    }
-                }
-                else if (UsedWords.Contains(currWord()) || IgnoreWords.Contains(currWord()))
-                {
-                    output = new Ranged<string>(new(Src[beginIndex..currIndex()]), index..currIndex());
-                    index += curr;
-                    return true;
-                }
-                curr++;
-            }
-        }
-
-        public string ReadNext()
-        {
-            TryReadNext(out Ranged<string> str);
-            return str;
-        }
-
-        public IEnumerator<Ranged<string>> GetEnumerator()
-        {
-            while (this.TryReadNext(out Ranged<string> str))
-            {
-                yield return str;
+                yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
             }
             yield break;
         }
 
-        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
+        public delegate IEnumerable<Ranged<string>> CustomReader(ReadPasser passer);
 
-        char[] UsedWords = new char[]
+
+
+        public enum WordStatus
         {
-            '.',
-            ',',
-            '<',
-            '>',
-            '/',
-            '?',
-            ':',
-            ';',
-            '\'',
-            '[',
-            ']',
-            '{',
-            '}',
-            '(',
-            ')',
-            '*',
-            '&',
-            '^',
-            '%',
-            '$',
-            '#',
-            '@',
-            '!',
-            '~',
-            '`',
-            '-',
-            '=',
-            '+',
-            '.',
-        };
-        char[] IgnoreWords = new char[]
-        {
-            ' ',
-            '\r',
-            '\n',
-            '\t',
-        };
-
-
-
-        public IEnumerable<Ranged<string>> Footer(string foot)
-            => this.Append(new Ranged<string>(foot, int.MaxValue..int.MaxValue));
-    }
-
-
-    public class FunctionReader : IEnumerable<string>
-    {
-        public ScriptReader reader;
-
-        public enum Bracket
-        {
-            Small,
-            Medium,
-            Big,
-            Comparer
+            None,
+            ImportantWord,
+            UsedWord,
+            IgnoreWord,
         }
 
-        public IEnumerator<string> GetEnumerator()
+
+        private WordInfo TryFindWord(List<char> charlist)
         {
-            Stack<Bracket> stack = new Stack<Bracket>(32);
-            foreach (string text in this.reader)
+            for(int i=charlist.Count; i>0;)
             {
-                switch (text)
+                var theVars = InfoList[--i].Where(x => charlist.Match(x.word, x.word.Length));
+                switch(theVars.Count())
                 {
-                    case "(":
-                        stack.Push(Bracket.Small);
-                        goto end;
-                    case "{":
-                        stack.Push(Bracket.Medium);
-                        goto end;
-                    case "[":
-                        stack.Push(Bracket.Big);
-                        goto end;
-                    case "<":
-                        stack.Push(Bracket.Comparer);
-                        goto end;
+                    case > 1:
+                        throw new Exception("Multiple Syntax Crash Boom Why");
+                    case 1:
+                        return theVars.First();
+                }
+            }
+            return (WordStatus.None, "", null);
+        }
 
-                    end:
-                        yield return text;
-                        break;
+        public List<WordInfo>[] InfoList;
 
-                    case ")":
-                        if (stack.Peek() != Bracket.Small)
-                            throw new Exception(stack.Peek() + "괄호가 더닫힘");
-                        stack.Pop();
+        public static List<WordInfo> BaseInfoList;
+
+        static ScriptReader()
+        {
+            BaseInfoList = new List<WordInfo>()
+            {
+                (WordStatus.UsedWord, ".."),
+                (WordStatus.UsedWord, "=>"),
+                (WordStatus.UsedWord, "->"),
+                (WordStatus.UsedWord, "~"),
+                (WordStatus.UsedWord, "`"),
+                (WordStatus.UsedWord, "!"),
+                (WordStatus.UsedWord, "@"),
+                (WordStatus.UsedWord, "#"),
+                (WordStatus.UsedWord, "$"),
+                (WordStatus.UsedWord, "%"),
+                (WordStatus.UsedWord, "^"),
+                (WordStatus.UsedWord, "&"),
+                (WordStatus.UsedWord, "*"),
+                (WordStatus.UsedWord, "("),
+                (WordStatus.UsedWord, ")"),
+                (WordStatus.UsedWord, "-"),
+                (WordStatus.UsedWord, "_"),
+                (WordStatus.UsedWord, "="),
+                (WordStatus.UsedWord, "+"),
+                (WordStatus.UsedWord, "["),
+                (WordStatus.UsedWord, "{"),
+                (WordStatus.UsedWord, "]"),
+                (WordStatus.UsedWord, "}"),
+                (WordStatus.UsedWord, "\\"),
+                (WordStatus.UsedWord, "|"),
+                (WordStatus.UsedWord, ";"),
+                (WordStatus.UsedWord, ":"),
+                (WordStatus.UsedWord, "'"),
+                (WordStatus.UsedWord, ","),
+                (WordStatus.UsedWord, "<"),
+                (WordStatus.UsedWord, "."),
+                (WordStatus.UsedWord, ">"),
+                (WordStatus.UsedWord, "/"),
+                (WordStatus.UsedWord, "?"),
+                (WordStatus.IgnoreWord, " "),
+                (WordStatus.IgnoreWord, "\r"),
+                (WordStatus.IgnoreWord, "\n"),
+                (WordStatus.IgnoreWord, "\t"),
+
+                (WordStatus.ImportantWord, "\"", CreateReaderStringWithOptions(false, false)),
+                (WordStatus.ImportantWord, "@\"", CreateReaderStringWithOptions(true, false)),
+                (WordStatus.ImportantWord, "$\"", CreateReaderStringWithOptions(false, true)),
+                (WordStatus.ImportantWord, "@$\"", CreateReaderStringWithOptions(true, true)),
+                (WordStatus.ImportantWord, "$@\"", CreateReaderStringWithOptions(true, true)),
+
+                (WordStatus.ImportantWord, "@\"", null),
+                (WordStatus.ImportantWord, "$\"", null),
+                (WordStatus.ImportantWord, "@$\"", null),
+                (WordStatus.ImportantWord, "$@\"", null),
+
+                (WordStatus.ImportantWord, "//", CreateReaderAnnotationUntil(Environment.NewLine)),
+                (WordStatus.ImportantWord, "/*", CreateReaderAnnotationUntil("*/")),
+                
+            };
+        }
+
+        IEnumerator<Ranged<string>> IEnumerable<Ranged<string>>.GetEnumerator() => Reader((_data,0));
+
+        IEnumerator IEnumerable.GetEnumerator() => Reader((_data,0));
+
+
+
+        private static CustomReader CreateReaderAnnotationUntil(string until)
+        {
+            return (x) => PartialReaderAnnotation(x, until);
+        }
+        private static CustomReader CreateReaderStringWithOptions(bool isAt, bool isFormat)
+        {
+            return (x) => PartialReaderString(x, isAt, isFormat);
+        }
+
+
+        
+        private static IEnumerable<Ranged<string>> PartialReaderAnnotation(ReadPasser passer, string ender)
+        {
+            List<char> Q = new List<char>();
+            Q.Add(passer.data.Current);
+            while (passer.MoveNext())
+            {
+                if (passer.data.CachedValues.Match(ender, ender.Length))
+                {
+                    ender.ForEach(Q.Add);
+                    yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
+                    yield break;
+                }
+                else
+                {
+                    Q.Add(passer.data.Current);
+                }
+            }
+        end:
+            throw new Exception("Unfinished Annotation");
+        }
+    
+        private static IEnumerable<Ranged<string>> PartialReaderString(ReadPasser passer, bool isAt, bool isFormat)
+        {
+            List<char> Q = new List<char>();
+            Q.Add(passer.data.Current);
+            while (passer.MoveNext())
+            {
+                switch (passer.data.Current, isAt, isFormat)
+                {
+                    case ('"', _, _):
+                        Q.Add(passer.data.Current);
+                        yield return new Ranged<string>(new string(Q.ToArray()), (passer.index - Q.Count)..passer.index);
+                        yield break;
+                    case ('\\', false, _):
+                        Q.Add(passer.data.Current);
+                        if (!passer.MoveNext())
+                            goto end;
+                        Q.Add(passer.data.Current);
                         break;
-                    case "}":
-                        if (stack.Peek() != Bracket.Medium)
-                            throw new Exception(stack.Peek() + "괄호가 더닫힘");
-                        stack.Pop();
-                        break;
-                    case "]":
-                        if (stack.Peek() != Bracket.Big)
-                            throw new Exception(stack.Peek() + "괄호가 더닫힘");
-                        stack.Pop();
-                        break;
-                    case ">":
-                        if (stack.Peek() != Bracket.Comparer)
-                            throw new Exception(stack.Peek() + "괄호가 더닫힘");
-                        stack.Pop();
+                    case (_, _, true):
+                        throw new NotImplementedException("not");
+                    default:
+                        Q.Add(passer.data.Current);
                         break;
                 }
-
-                if (stack.Count == 0)
-                    yield break;
             }
+        end:
+            throw new Exception("Unfinished String");
         }
-
-        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
     }
 
+    public record struct WordInfo(ScriptReader.WordStatus status, string word, ScriptReader.CustomReader? reader)
+    {
+        public static implicit operator WordInfo((ScriptReader.WordStatus status, string word) value)
+        {
+            return new WordInfo(value.status, value.word, null);
+        }
 
 
+        public static implicit operator (ScriptReader.WordStatus status, string word, ScriptReader.CustomReader? reader)(WordInfo value)
+        {
+            return (value.status, value.word, value.reader);
+        }
 
+        public static implicit operator WordInfo((ScriptReader.WordStatus status, string word, ScriptReader.CustomReader? reader) value)
+        {
+            return new WordInfo(value.status, value.word, value.reader);
+        }
+    }
 
+    public record struct ReadPasser(ICachedEnumerator<char> data, int index) : IEnumerator<char>
+    {
+        public char Current => data.Current;
 
+        object IEnumerator.Current => data.Current;
 
+        public void Dispose()
+        {
+            data.Dispose();
+        }
 
+        public bool MoveNext()
+        {
+            bool b = data.MoveNext();
+            if (b) index++;
+            return b;
+        }
+
+        public void Reset()
+        {
+            data.Reset();
+            index = 0;
+        }
+
+        public static implicit operator (ICachedEnumerator<char> data, int index)(ReadPasser value)
+        {
+            return (value.data, value.index);
+        }
+
+        public static implicit operator ReadPasser((ICachedEnumerator<char> data, int index) value)
+        {
+            return new ReadPasser(value.data, value.index);
+        }
+    }
 }

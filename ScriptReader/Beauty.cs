@@ -83,7 +83,7 @@ namespace MPLLib
             public static int Length(this Range range) => range.End.Value - range.Start.Value;
 
 
-            public static IEnumerable<int> FindAllIndex<T>(this List<T> list, Predicate<T> predicate)
+            public static IEnumerable<int> FindAllIndex<T>(this IList<T> list, Predicate<T> predicate)
             {
                 for(int i=0;i<list.Count; i++)
                 {
@@ -94,8 +94,8 @@ namespace MPLLib
                 }
             }
 
-            public static IEnumerable<List<T>> Split<T>(this List<T> list, T match) => Split<T>(list, (x) => object.Equals(match, x));
-            public static IEnumerable<List<T>> Split<T>(this List<T> list, Predicate<T> predicate)
+            public static IEnumerable<List<T>> Split<T>(this IList<T> list, T match) => Split<T>(list, (x) => object.Equals(match, x));
+            public static IEnumerable<List<T>> Split<T>(this IList<T> list, Predicate<T> predicate)
             {
                 List<int> splitlist = list.FindAllIndex((x) => predicate(x)).ToList();
                 splitlist.Insert(0,-1);
@@ -107,6 +107,27 @@ namespace MPLLib
                     yield return list.Skip(skipcount).Take(takecount).ToList();
                 }
             }
+            public static IEnumerable<List<T>> Split<T>(this IEnumerable<T> list, T match) => Split<T>(list, (x) => object.Equals(match,x));
+            public static IEnumerable<List<T>> Split<T>(this IEnumerable<T> list, Predicate<T> predicate)
+            {
+                List<T> outlist = new List<T>();
+                foreach(T item in list)
+                {
+                    if(predicate(item))
+                    {
+                        yield return outlist;
+                        outlist = new List<T>();
+                    }
+                    else
+                    {
+                        outlist.Add(item);
+                    }
+                }
+                yield return outlist;
+                yield break;
+            }
+
+    
 
             public static bool Match<T>(this IEnumerable<T> origin, IEnumerable<T> target, int matchlength)
             {
@@ -124,8 +145,8 @@ namespace MPLLib
                 return true;
             }
 
-            public static bool MatchFromBehind<T>(this List<T> origin, List<T> target) => MatchFromBehind(origin, target, origin.Count, target.Count);
-            public static bool MatchFromBehind<T>(this List<T> origin, IEnumerable<T> target, int matchlength) => MatchFromBehind(origin, target, origin.Count, matchlength);
+            public static bool MatchFromBehind<T>(this IList<T> origin, IList<T> target) => MatchFromBehind(origin, target, origin.Count, target.Count);
+            public static bool MatchFromBehind<T>(this IList<T> origin, IEnumerable<T> target, int matchlength) => MatchFromBehind(origin, target, origin.Count, matchlength);
             public static bool MatchFromBehind<T>(this IEnumerable<T> origin, IEnumerable<T> target, int originlength, int matchlength)
             {
                 return origin.Skip(originlength - matchlength).Take(matchlength).Match(target, matchlength);
