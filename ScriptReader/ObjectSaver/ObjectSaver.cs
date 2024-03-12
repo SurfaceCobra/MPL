@@ -10,7 +10,7 @@ using System.Text;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
-namespace MPLLib
+namespace MPLLib.DataExecute
 {
     public class ObjectSaver : IDisposable
     {

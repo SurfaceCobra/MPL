@@ -13,13 +13,14 @@ namespace MPLLib
     public interface ICachedEnumerable<T> : IEnumerable<T>
     {
         public int CacheSize { get; set; }
-
     }
 
     public interface ICachedEnumerator<T> : IEnumerator<T>
     {
         public int CacheSize { get; set; }
         public IEnumerable<T> Peek(int length);
+
+        public bool TryPeek(int length, out IEnumerable<T> output);
 
         public List<T> CachedValues { get; }
 
@@ -35,62 +36,47 @@ namespace MPLLib
             this.enumerable = enumerable;
             this.CacheSize = CacheSize;
         }
-
-
-
         private IEnumerable<T> enumerable;
         public int CacheSize { get; set; }
-
-        ICachedEnumerator<T> GetCachedEnumerator()
-        {
-            return new CachedEnumerator<T>(enumerable.GetEnumerator(), CacheSize);
-        }
-
-
-        IEnumerator<T> IEnumerable<T>.GetEnumerator()
-        {
-            return enumerable.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return enumerable.GetEnumerator();
-        }
+        ICachedEnumerator<T> GetCachedEnumerator() => new CachedEnumerator<T>(enumerable.GetEnumerator(), CacheSize);
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => enumerable.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => enumerable.GetEnumerator();
     }
 
     public class CachedEnumerator<T> : ICachedEnumerator<T>
     {
-        public CachedEnumerator(IEnumerator<T> enumerator) : this(enumerator, 4)
-        {
-        }
+        public CachedEnumerator(IEnumerator<T> enumerator) : this(enumerator, 4) { }
         public CachedEnumerator(IEnumerator<T> enumerator, int CacheSize)
         {
             this.enumerator = enumerator;
             this.CacheSize = CacheSize;
         }
-
         private IEnumerator<T> enumerator;
         public int CacheSize { get; set; }
-
         public List<T> CachedValues { get; init; } = new List<T>();
 
         public IEnumerable<T> Peek(int length)
         {
-            if(Load(length))
+            TryPeek(length, out var output);
+            return output;
+        }
+        public bool TryPeek(int length, out IEnumerable<T> output)
+        {
+            if (Load(length))
             {
-                return this.CachedValues.Take(length);
+                output = this.CachedValues.Take(length);
+                return true;
             }
             else
             {
-                return this.CachedValues;
+                output = this.CachedValues;
+                return false;
             }
         }
 
         public T Current => CachedValues.First();
         T IEnumerator<T>.Current => this.Current;
-
         object IEnumerator.Current => this.Current;
-
         void IDisposable.Dispose()
         {
             enumerator.Dispose();
@@ -102,9 +88,6 @@ namespace MPLLib
             if(CachedValues.Count>0) CachedValues.RemoveAt(0);
             Load(CacheSize);
             return CachedValues.Count != 0;
-            if (CachedValues.Count == 0)
-                return false;
-            return true;
         }
         bool IEnumerator.MoveNext() => this.MoveNext();
 
@@ -117,43 +100,20 @@ namespace MPLLib
         private bool Load(int size)
         {
             while (CachedValues.Count < size)
-            {
                 if (enumerator.MoveNext())
-                {
                     CachedValues.Add(enumerator.Current);
-                }
                 else
-                {
                     break;
-                }
-            }
-            
             return !(CachedValues.Count < size);
         }
-
-
-        public void MoveNextSilent()
-        {
-            this.enumerator.MoveNext();
-        }
-
-
-        public static implicit operator CachedEnumerator<T>(List<T> srclist)
-        {
-            return new CachedEnumerator<T>(srclist.GetEnumerator());
-        }
-        public static implicit operator CachedEnumerator<T>(T[] srcarray)
-        {
-            return new CachedEnumerator<T>(srcarray.ToList().GetEnumerator());
-        }
+        public void MoveNextSilent() => this.enumerator.MoveNext();
+        public static implicit operator CachedEnumerator<T>(List<T> srclist) => new CachedEnumerator<T>(srclist.GetEnumerator());
+        public static implicit operator CachedEnumerator<T>(T[] srcarray) => new CachedEnumerator<T>(srcarray.ToList().GetEnumerator());
     }
 
 
     public static class ExtensionMethodICachedEnumerator
     {
-        public static ICachedEnumerator<T> GetCachedEnumerator<T>(this IEnumerable<T> enumerable, int CacheSize)
-        {
-            return new CachedEnumerator<T>(enumerable.GetEnumerator(), CacheSize);
-        }
+        public static ICachedEnumerator<T> GetCachedEnumerator<T>(this IEnumerable<T> enumerable, int CacheSize) => new CachedEnumerator<T>(enumerable.GetEnumerator(), CacheSize);
     }
 }

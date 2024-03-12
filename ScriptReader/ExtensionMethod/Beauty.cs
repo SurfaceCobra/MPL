@@ -6,11 +6,11 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Markup;
-using static MPLLib.ScriptBlock;
+using static MPLLib.DataExecute.ScriptBlock;
 
 namespace MPLLib
 {
-    namespace Beauty
+    namespace ExtensionMethod
     {
 
         public static class ExtensionMethodIsHere
@@ -107,15 +107,15 @@ namespace MPLLib
                     yield return list.Skip(skipcount).Take(takecount).ToList();
                 }
             }
-            public static IEnumerable<List<T>> Split<T>(this IEnumerable<T> list, T match) => Split<T>(list, (x) => object.Equals(match,x));
-            public static IEnumerable<List<T>> Split<T>(this IEnumerable<T> list, Predicate<T> predicate)
+            public static IEnumerable<T[]> Split<T>(this IEnumerable<T> list, params T[] matches) => Split<T>(list, (x) => matches.Any(match => object.Equals(match, x)));
+            public static IEnumerable<T[]> Split<T>(this IEnumerable<T> list, Predicate<T> predicate)
             {
                 List<T> outlist = new List<T>();
                 foreach(T item in list)
                 {
                     if(predicate(item))
                     {
-                        yield return outlist;
+                        yield return outlist.ToArray();
                         outlist = new List<T>();
                     }
                     else
@@ -123,7 +123,7 @@ namespace MPLLib
                         outlist.Add(item);
                     }
                 }
-                yield return outlist;
+                yield return outlist.ToArray();
                 yield break;
             }
 
@@ -154,6 +154,30 @@ namespace MPLLib
 
 
 
+
+
+            public static bool TryMoveNext<T>(this IEnumerator<T> enumerator, out T output)
+            {
+                if(enumerator.MoveNext())
+                {
+                    output = enumerator.Current;
+                    return true;
+                }
+                else
+                {
+                    output = default(T);
+                    return false;
+                }
+            }
+        }
+
+
+        public static class ExtensionMethodRange
+        {
+            public static bool IsInside(this Range range, int index)
+            {
+                return range.Start.Value <= index && index <= range.End.Value;
+            }
         }
 
         public static class MM

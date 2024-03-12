@@ -4,6 +4,19 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Obsolite\Begex.cs" />
+    <Compile Remove="Obsolite\BegexParse.cs" />
+    <Compile Remove="Obsolite\BegexParse2.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Obsolite\Begex.cs" />
+    <Content Include="Obsolite\BegexParse.cs" />
+    <Content Include="Obsolite\BegexParse2.cs" />
+  </ItemGroup>
 
 </Project>
