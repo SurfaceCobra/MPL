@@ -5,11 +5,11 @@ VisualStudioVersion = 17.9.34321.82
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleTester", "ConsoleTester\ConsoleTester.csproj", "{12DA6939-1149-4C99-B9EE-1FB933A6DAE5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MPLLib", "ScriptReader\MPLLib.csproj", "{188EA27C-96E7-43F0-B7C0-B6DC609D7A45}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FormTester", "FormTester\FormTester.csproj", "{3613BBCD-B4CC-439A-9FFA-C17202D2BB95}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MPLConverter", "MPLConverter\MPLConverter.csproj", "{CE97245A-99DE-4F00-979F-A15AE491D724}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MPLLib", "MPLLib\MPLLib.csproj", "{DE86269C-35CF-4DBD-944A-B859A718477C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,10 +21,6 @@ Global
 		{12DA6939-1149-4C99-B9EE-1FB933A6DAE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{12DA6939-1149-4C99-B9EE-1FB933A6DAE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{12DA6939-1149-4C99-B9EE-1FB933A6DAE5}.Release|Any CPU.Build.0 = Release|Any CPU
-		{188EA27C-96E7-43F0-B7C0-B6DC609D7A45}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{188EA27C-96E7-43F0-B7C0-B6DC609D7A45}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{188EA27C-96E7-43F0-B7C0-B6DC609D7A45}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{188EA27C-96E7-43F0-B7C0-B6DC609D7A45}.Release|Any CPU.Build.0 = Release|Any CPU
 		{3613BBCD-B4CC-439A-9FFA-C17202D2BB95}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{3613BBCD-B4CC-439A-9FFA-C17202D2BB95}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3613BBCD-B4CC-439A-9FFA-C17202D2BB95}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -33,6 +29,10 @@ Global
 		{CE97245A-99DE-4F00-979F-A15AE491D724}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CE97245A-99DE-4F00-979F-A15AE491D724}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CE97245A-99DE-4F00-979F-A15AE491D724}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DE86269C-35CF-4DBD-944A-B859A718477C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE86269C-35CF-4DBD-944A-B859A718477C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE86269C-35CF-4DBD-944A-B859A718477C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE86269C-35CF-4DBD-944A-B859A718477C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

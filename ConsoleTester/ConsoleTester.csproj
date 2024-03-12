@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MPLConverter\MPLConverter.csproj" />
-    <ProjectReference Include="..\ScriptReader\MPLLib.csproj" />
+    <ProjectReference Include="..\MPLLib\MPLLib.csproj" />
   </ItemGroup>
 
 </Project>
