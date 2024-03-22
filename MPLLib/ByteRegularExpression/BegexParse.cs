@@ -26,22 +26,22 @@ namespace MPLLib.ByteRegularExpression
 
 
             ScriptBlock.Block block = ScriptBlock.Create(reader);
-            group = ConvertBlock(block);
+            group = ConvertGroup(block);
         }
 
 
-        MatchGroup ConvertBlock(ScriptBlock.Block block)
+        MatchGroup ConvertGroup(ScriptBlock.Block block)
         {
-            MatchGroup group;
 
             List<IMatchOption> options = new List<IMatchOption>();
             List<IBegexArg> args = new List<IBegexArg>();
 
             if (block.shape == Bracket.Shape.EOF) ;
 
+            List<InnerMatchGroup> groups = new List<InnerMatchGroup>();
 
 
-            var flag = ParseResultType.Byte | ParseResultType.ByteArray | ParseResultType.BlockSmall | ParseResultType.BlockMedium | ParseResultType.BlockBig | ParseResultType.BlockComp;
+            var flag = ParseResultType.Byte | ParseResultType.ByteArray | ParseResultType.BlockSmall | ParseResultType.BlockMedium | ParseResultType.BlockBig | ParseResultType.BlockComp | ParseResultType.OrSymbol;
             var e = block.GetCachedEnumerator(5);
             while (TryParseAnything(e, flag, out ParseResult result)) switch (result)
                 {
@@ -58,7 +58,7 @@ namespace MPLLib.ByteRegularExpression
                             args.Add(new MatchOrByte(v));
                         break;
                     case ParseResult.BlockSmallResult bsr:
-                        args.Add(ConvertBlock(bsr.result));
+                        args.Add(ConvertGroup(bsr.result));
                         break;
 
                     case ParseResult.BlockMediumResult bmr:
@@ -68,11 +68,18 @@ namespace MPLLib.ByteRegularExpression
                         options.Add(ConvertMatchOption(bcr.result));
                         break;
 
+                    case ParseResult.OrSymbolResult:
+                        groups.Add(new InnerMatchGroup(args.ToArray()));
+                        args = new List<IBegexArg>();
+                        break;
+
                     default:
                         throw new Exception();
                 }
 
-            return new MatchGroup(options.ToArray(), args.ToArray());
+
+            groups.Add(new InnerMatchGroup(args.ToArray()));
+            return new MatchGroup(groups.ToArray(), options.ToArray());
         }
 
 
@@ -130,7 +137,8 @@ namespace MPLLib.ByteRegularExpression
         {
             bool[] bools = Enumerable.Repeat(false, 256).ToArray();
             var e = block.GetCachedEnumerator(5);
-            while (TryParseAnything(e, ParseResultType.Byte | ParseResultType.ByteRange, out var result)) switch (result)
+            bool isReverse = false;
+            while (TryParseAnything(e, ParseResultType.Byte | ParseResultType.ByteRange | ParseResultType.ReverseSymbol, out var result)) switch (result)
             {
                 case ParseResult.ByteResult br:
                     bools[br.result] = true;
@@ -139,10 +147,16 @@ namespace MPLLib.ByteRegularExpression
                     for (byte i = brr.result.Item1; i <= brr.result.Item2; i++)
                         bools[i] = true;
                     break;
+                case ParseResult.ReverseSymbolResult:
+                        isReverse = !isReverse;
+                        break;
                 default:
                     throw new Exception();
             }
-
+            if(isReverse)
+                for(int i = 0; i < 256; i++)
+                    bools[i] = !bools[i];
+            
             return new MatchOrByte(bools);
         }
 
@@ -168,7 +182,7 @@ namespace MPLLib.ByteRegularExpression
             byte[] result = new byte[(s.Length - 2) / 2];
             for (int i = 0; i < s.Length - 2; i += 2)
             {
-                result[i] = Convert.ToByte($"{s[i + 1]}{s[i + 2]}", 16);
+                result[i/2] = Convert.ToByte($"{s[i + 1]}{s[i + 2]}", 16);
             }
             return result;
         }
@@ -230,7 +244,11 @@ namespace MPLLib.ByteRegularExpression
                             throw new Exception();
 
 
+                        case "^" when flags.HasFlag(ParseResultType.ReverseSymbol):
+                            return new ParseResult.ReverseSymbolResult();
 
+                        case "|" when flags.HasFlag(ParseResultType.OrSymbol):
+                            return new ParseResult.OrSymbolResult();
 
                         default: throw new Exception();
                     }
@@ -302,6 +320,8 @@ namespace MPLLib.ByteRegularExpression
         BlockBig = 1 << 6,
         BlockComp = 1 << 7,
         BlockDollar = 1 << 8,
+        ReverseSymbol = 1<<9,
+        OrSymbol = 1<<10,
     }
     internal interface ParseResult
     {
@@ -390,6 +410,16 @@ namespace MPLLib.ByteRegularExpression
             {
                 this.result = result;
             }
+        }
+        public class ReverseSymbolResult : ParseResult
+        {
+            public ParseResultType resultType => ParseResultType.ReverseSymbol;
+            public ReverseSymbolResult() { }
+        }
+        public class OrSymbolResult : ParseResult
+        {
+            public ParseResultType resultType => ParseResultType.OrSymbol;
+            public OrSymbolResult() { }
         }
     }
 }

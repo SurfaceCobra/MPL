@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MPLLib.Cached;
+using MPLLib.Partial;
 using MPLLib.ArrayVariants;
 using MPLLib.ExtensionMethod;
+using System.IO;
 
 namespace MPLLib.ByteRegularExpression
 {
@@ -16,13 +17,19 @@ namespace MPLLib.ByteRegularExpression
 
     public class BegexRun : IDisposable
     {
-        CachedStreamDynamic cs { get; init; }
+        IPartialReader<byte> cs { get; init; }
         long currentIndex = 0;
         IndexArray<byte> currentBytes { get; init; }
 
 
         MatchGroup BaseBlock { get; init; }
 
+        public BegexRun(Begex begex, IPartialReader<byte> byteSequence, int searchBuffer = 1024)
+        {
+            currentBytes = new IndexArray<byte>(searchBuffer);
+            cs = byteSequence;
+            this.BaseBlock = begex.group;
+        }
         public BegexRun(Begex begex, Stream stream, int searchBuffer = 1024)
         {
             currentBytes = new IndexArray<byte>(searchBuffer);
@@ -31,11 +38,14 @@ namespace MPLLib.ByteRegularExpression
         }
         public void Dispose() => cs.Dispose();
 
-        public IEnumerable<byte[]> Run()
+
+        public IEnumerable<byte[]> MatchAll()
         {
-            for(long i=0;i<cs.stream.Length;)
+            for(long i=0;cs.IsReadable(i);)
             {
-                if(RunAt(i))
+
+
+                if(MatchAt(i))
                 {
                     i = currentIndex;
                     yield return currentBytes.ToArray();
@@ -47,9 +57,26 @@ namespace MPLLib.ByteRegularExpression
             }
             yield break;
         }
-
-        public bool RunAt(long index)
+        public byte[] MatchFirst(long startIndex = 0)
         {
+            for (long i = startIndex; cs.IsReadable(i);)
+            {
+                if (MatchAt(i))
+                {
+                    i = currentIndex;
+                    return currentBytes.ToArray();
+                }
+                else
+                {
+                    i++;
+                }
+            }
+            return null;
+        }
+
+        public bool MatchAt(long index)
+        {
+
             currentIndex = index;
             try
             {
@@ -60,16 +87,23 @@ namespace MPLLib.ByteRegularExpression
             {
                 return false;
             }
+            catch(CacheNotAccesibleException)
+            {
+                return false;
+            }
         }
 
-        private bool RunBlock(MatchGroup block)
+        private bool RunBlock(MatchGroup group)
         {
 
 
             Range range = 1..1;
             bool exclude = false;
             byte[] swapbytes = null;
-            foreach (var option in block.options)
+
+
+
+            foreach (var option in group.options)
             {
                 switch (option)
                 {
@@ -87,27 +121,37 @@ namespace MPLLib.ByteRegularExpression
                 }
             }
 
-            if(!SafeLaunch(() =>
+
+            //InnerMatchGroups중에 true가 하나라도 나오면 true 반환, 전부 false면 false 반환
+            foreach (var innerGroup in group.innerMatchGroups)
             {
-                int repeatCount;
-                for (repeatCount = 0; repeatCount < range.End.Value; repeatCount++)
+                if (SafeLaunch(() =>
                 {
-                    if (!SafeLaunch(() => RunBlockInnerRepeat(block.args)))
+                    if (!SafeLaunch(() =>
                     {
-                        break;
+                        int repeatCount;
+                        for (repeatCount = 0; repeatCount < range.End.Value; repeatCount++)
+                        {
+                            if (!SafeLaunch(() => RunBlockInnerRepeat(innerGroup.args)))
+                            {
+                                break;
+                            }
+                        }
+
+                        if (!range.IsInside(repeatCount))
+                            return false;
+                        return true;
+                    }, exclude, swapbytes))
+                    {
+                        return false;
                     }
+                    return true;
+                }, false, null))
+                {
+                    return true;
                 }
-
-                if (!range.IsInside(repeatCount))
-                    return false;
-                return true;
-            }, exclude, swapbytes))
-            {
-                return false;
             }
-
-
-            return true;
+            return false;
         }
 
         private bool RunBlockInnerRepeat(IEnumerable<IBegexArg> args)

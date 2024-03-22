@@ -5,7 +5,14 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>AnyCPU;x86;x64</Platforms>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="MemoryHandle\**" />
+    <EmbeddedResource Remove="MemoryHandle\**" />
+    <None Remove="MemoryHandle\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Obsolite\Begex.cs" />

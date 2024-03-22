@@ -11,20 +11,28 @@ namespace MPLLib.ByteRegularExpression
         internal MatchGroup group { get; init; }
     }
 
-    internal class MatchGroup : IBegexArg
+    internal partial class MatchGroup : IBegexArg
     {
-
         internal IMatchOption[] options { get; init; }
-        internal IBegexArg[] args { get; init; }
-
-        public MatchGroup(IMatchOption[] options, IBegexArg[] args)
+        internal InnerMatchGroup[] innerMatchGroups { get; init; }
+        public MatchGroup(InnerMatchGroup[] innerMatchGroups, IMatchOption[] options)
         {
+            this.innerMatchGroups= innerMatchGroups;
             this.options = options;
-            this.args = args;
         }
     }
 
-    internal class MatchOrByte : IBegexArg
+    internal partial class InnerMatchGroup
+    {
+        public InnerMatchGroup(IBegexArg[] args)
+        {
+            this.args = args;
+        }
+        internal IBegexArg[] args { get; init; }
+
+    }
+
+    internal partial class MatchOrByte : IBegexArg
     {
         internal bool[] matchBytes { get; init; }
         public MatchOrByte(params byte[] matchBytes)

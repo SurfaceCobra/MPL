@@ -4,18 +4,23 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MPLLib.Cached
+namespace MPLLib.Partial
 {
     public class CachedStreamAsync
     {
 
     }
-    public class CachedStream
+    public class CachedStreamFixed// : IPartialReader<byte>, IDisposable
     {
+        Stream s;
         
+        void asdf()
+        {
+            
+        }
     }
 
-    public class CachedStreamDynamic : IDisposable
+    public class CachedStreamDynamic : IPartialReader<byte>, IDisposable
     {
 #if DEBUG
         public int cacheHitSuccess = 0;
@@ -46,7 +51,6 @@ namespace MPLLib.Cached
             this.CachePrevOffset = CachePrevOffset;
         }
 
-
         public byte this[long index]
         {
             get
@@ -64,6 +68,10 @@ namespace MPLLib.Cached
                 {
                     cacheHitSuccess++;
 #endif
+                }
+                if(cache.array.Length < index - cache.index)
+                {
+                    throw new CacheNotAccesibleException();
                 }
                 return cache.array[index - cache.index];
             }
@@ -127,5 +135,12 @@ namespace MPLLib.Cached
         }
 
         public void Dispose() => stream.Dispose();
+
+        public bool IsReadable(long index)
+        {
+            if (index < 0) return false;
+            if (index > stream.Length) return false;
+            return true;
+        }
     }
 }
